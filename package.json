@@ -1,0 +1,30 @@
+{
+  "name": "map-vue-test",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "changeset-version": "changeset version",
+    "changeset": "changeset",
+    "changeset-pre-beta": "changeset pre enter beta",
+    "changeset-pre-next": "changeset pre enter next",
+    "changeset-pre-alpha": "changeset pre enter alpha",
+    "changeset-pre-exit": "changeset pre exit"
+  },
+  "dependencies": {
+    "@changesets/cli": "^2.27.9",
+    "autoprefixer": "^10.4.20",
+    "cesium": "^1.123.1",
+    "ol": "^10.2.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14",
+    "vue": "^3.5.12"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "vite": "^5.4.10"
+  }
+}
