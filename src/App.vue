@@ -1,9 +1,12 @@
 <script setup>
 import BaseMap from './components/OpenLayers/base.vue'
+// import TestMap from './components/OpenLayers/test.vue'
+import {data} from './mock/data.js'
 </script>
 
 <template>
-  <BaseMap />
+  <!-- <TestMap /> -->
+  <BaseMap :data="data"/>
 </template>
 
 <style scoped>
