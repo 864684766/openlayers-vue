@@ -177,20 +177,18 @@ const addAnimationMarker = (map, routeLines, speed) => {
        * 开启动画使标注移动
        */
       const animationStep = async () => {
+        await delay(props.markReturnDelay);
         progress += speed; // 每次增加进度
-
         if (progress >= 1) {
           progress = 0; // 重置进度
           currentIndex++;
         }
-
         if (!props.allowMarkReturn && currentIndex === totalPoints - 1) {
           cancelAnimationFrame(animalFrameId);
           return;
         }
 
         if (currentIndex === totalPoints - 1) {
-          await delay(props.markReturnDelay);
           currentPoint = currentPoint.reverse();
           currentIndex = 0; // 循环移动到第一个点位
         }
