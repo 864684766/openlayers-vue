@@ -15,7 +15,7 @@ import VectorImageLayer from "ol/layer/VectorImage";
 import { Style, Icon, Text, Fill, Stroke } from "ol/style";
 import shiziIcon from "@/assets/imgs/shizi.svg";
 import daxiangIcon from "@/assets/imgs/daxiang.svg";
-import qicheIcon from "@/assets/imgs/dahuoche.svg";
+import qicheIcon from "@/assets/imgs/qiche.svg";
 
 import "ol/ol.css";
 import { LineString } from "ol/geom";
@@ -154,7 +154,7 @@ const addRoute = (map, routeLines, routeStyle) => {
  * @param routeLines
  * @param speed
  */
-const addAnimationMarker = (map, routeLines, speed) => {
+const addAnimationMarker = (map, routeLines, speed,offset=0) => {
   routeLines.forEach((routeLineItem) => {
     let currentPoint = routeLineItem.gps_point;
     const currentMarket = {
@@ -166,45 +166,18 @@ const addAnimationMarker = (map, routeLines, speed) => {
 
     let currentIndex = 0; // 当前点位索引
     const totalPoints = currentPoint.length; // 使用当前线路的点位数量
+    let animalFrameId = null; // 动画帧ID
 
-    let animalFrameId = null;
-    // /**
-    //  * 设置实时点位的角度
-    //  * @param prevPos
-    //  * @param curPos
-    //  */
-    // const calculateAngle = (mapInstance, prevPos, curPos) => {
-    //   const prevPixel = mapInstance.getPixelFromCoordinate(prevPos);
-    //   const curPixel = mapInstance.getPixelFromCoordinate(curPos);
-
-    //   const dx = curPixel[0] - prevPixel[0];
-    //   const dy = curPixel[1] - prevPixel[1];
-    //   const angle = Math.atan2(dy, dx); // 计算角度（弧度）
-
-    //   // 将弧度转换为度数
-    //   let deg = (angle * 180) / Math.PI;
-
-    //   // 确保角度在 0 到 360 度之间
-    //   if (deg < 0) {
-    //     deg += 360; // 将负角度转换为正角度
-    //   }
-
-    //   // 处理横向移动的情况
-    //   if (Math.abs(dy) < Math.abs(dx)) {
-    //     if (dx < 0) {
-    //       deg = 180; // 向左移动时，设置为 180 度
-    //     } else {
-    //       deg = 0; // 向右移动时，设置为 0 度
-    //     }
-    //   }
-
-    //   return deg; // 返回修正后的角度
-    // };
-
-    const calculateAngle = (first, second) => {
+    /**
+     *  获取两个点之间的角度,如果图像是竖着的并且头向上，就+105个角度可保证图像的正常运行，如果是横着的并且头向右，就不要加105个角度，正常写可保证图像的正常运行
+     * @param first 
+     * @param second 
+     * @param offset // 偏移量
+     */
+    const calculateAngle = (first, second,offset=0) => {
       let y = second[1] - first[1];
       let x = second[0] - first[0];
-      let radAngle = Math.atan(y / x);
+      let radAngle = Math.atan(y / x)+offset;
       if (y <= 0 && x >= 0) {
         //第二象限
         console.log("第二象限");
@@ -265,7 +238,7 @@ const addAnimationMarker = (map, routeLines, speed) => {
         ];
 
         pointMark.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
-        const angle = calculateAngle(start, end);
+        const angle = calculateAngle(start, end,offset);
         const style = pointMark.getStyle() as Style;
         if (style && style.getImage) {
           style.getImage().setRotation(angle);
@@ -340,13 +313,15 @@ const initMap = () => {
   };
   // 地图上标注的移动速度，0-1之间，越大越快
   const iconSpeed = 0.008;
+  // icon的偏移量
+  const offset = 105;
 
   buildMap();
   addRoute(mapInstance, props.data, routeStyle);
   addControl(mapInstance);
   addMarker(mapInstance, startPointInfo, shiziIcon);
   addMarker(mapInstance, endPointInfo, daxiangIcon);
-  addAnimationMarker(mapInstance, props.data, iconSpeed);
+  addAnimationMarker(mapInstance, props.data, iconSpeed,offset);
 };
 
 const initZoomClick = () => {
