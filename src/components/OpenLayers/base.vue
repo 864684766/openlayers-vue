@@ -19,11 +19,23 @@ import qicheIcon from "@/assets/imgs/qiche.svg";
 
 import "ol/ol.css";
 import { LineString } from "ol/geom";
+import { markerType } from "@/enums";
 
 const props = defineProps({
-  data: {
+  /**
+   * 路径数据
+   */
+  routeData: {
     type: Object,
-    required: true,
+    required: false,
+  },
+
+  /**
+   * 点位数据
+   */
+  pointData: {
+    type: Array,
+    required: false,
   },
   /**
    * 允许动画标注返回
@@ -39,6 +51,20 @@ const props = defineProps({
     type: Number,
     default: 5000,
   },
+  /**
+   * 是否显示轨迹
+   */
+  showTrack: {
+    type: Boolean,
+    default: true,
+  },
+  /**
+   * 轨迹的模式，有历史轨迹history和实时轨迹 live 两种
+   */
+  trackMode: {
+    type: String,
+    default: "history",
+  },
 });
 
 const mapRef = ref();
@@ -47,6 +73,19 @@ const mapRef = ref();
  * 地图实例
  */
 let mapInstance = null;
+
+/**
+ * 路线池，用于存储不同类型的路线，方便后续清理的时候操作
+ * 当前以下类型：
+ * 1. 轨迹 trackLine
+ *
+ */
+const linePool = [];
+
+/**
+ * 点位池子,用于存储不同类型的点位，方便后续清理的时候操作
+ */
+const pointPool = [];
 
 /**
  *  添加控件
@@ -107,7 +146,14 @@ const createIconMark = (curPoint, icon, anchor = [0.5, 0.5], scale = 0.2) => {
 /**
  *  添加标记
  */
-const addMarker = (map, pointData, icon, anchor = [0.5, 1], scale = 0.2) => {
+const addMarker = ({
+  map,
+  pointData,
+  icon,
+  anchor = [0.5, 1],
+  scale = 0.2,
+  type,
+}) => {
   const pointMark = createIconMark(pointData, icon, anchor, scale);
   const vectorSource = new VectorSource({
     features: [pointMark],
@@ -116,6 +162,8 @@ const addMarker = (map, pointData, icon, anchor = [0.5, 1], scale = 0.2) => {
     source: vectorSource,
   });
   map.addLayer(vectorLayer);
+  const pointItem = { instance: pointMark, type };
+  pointPool.push(pointItem);
   return { pointMark };
 };
 
@@ -123,7 +171,7 @@ const addMarker = (map, pointData, icon, anchor = [0.5, 1], scale = 0.2) => {
  * 添加路线
  * @param map
  */
-const addRoute = (map, routeLines, routeStyle) => {
+const addRoute = (map, routeLines, routeStyle, routeType = "trackLine") => {
   /**
    *  创建一条线
    * @param points
@@ -139,12 +187,14 @@ const addRoute = (map, routeLines, routeStyle) => {
       source: source,
       style: routeStyle,
     });
-
     map.addLayer(routeLayer);
+    return { routeFeature };
   };
 
   routeLines.forEach((routeLines) => {
-    createSingleRoute(routeLines.gps_point);
+    const { routeFeature } = createSingleRoute(routeLines.gps_point);
+    const lineItem = { type: routeType, instance: routeFeature };
+    linePool.push(lineItem);
   });
 };
 
@@ -152,9 +202,10 @@ const addRoute = (map, routeLines, routeStyle) => {
  * 添加动画标记
  * @param map
  * @param routeLines
- * @param speed
+ * @param speed 标注的速度
+ * @param offset 如果图像是竖着的并且头向上，就+105个角度可保证图像的正常运行，如果是横着的并且头向右，就不要加105个角度，正常写可保证图像的正常运行
  */
-const addAnimationMarker = (map, routeLines, speed,offset=0) => {
+const addAnimationMarker = (map, routeLines, speed, offset = 0) => {
   routeLines.forEach((routeLineItem) => {
     let currentPoint = routeLineItem.gps_point;
     const currentMarket = {
@@ -162,7 +213,13 @@ const addAnimationMarker = (map, routeLines, speed,offset=0) => {
       gps_point: currentPoint[0],
     };
     const anchor = [0.5, 0.5];
-    const { pointMark } = addMarker(map, currentMarket, qicheIcon, anchor);
+    const { pointMark } = addMarker({
+      map,
+      pointData: currentMarket,
+      icon: qicheIcon,
+      anchor,
+      type: markerType.animation,
+    });
 
     let currentIndex = 0; // 当前点位索引
     const totalPoints = currentPoint.length; // 使用当前线路的点位数量
@@ -170,14 +227,14 @@ const addAnimationMarker = (map, routeLines, speed,offset=0) => {
 
     /**
      *  获取两个点之间的角度,如果图像是竖着的并且头向上，就+105个角度可保证图像的正常运行，如果是横着的并且头向右，就不要加105个角度，正常写可保证图像的正常运行
-     * @param first 
-     * @param second 
+     * @param first
+     * @param second
      * @param offset // 偏移量
      */
-    const calculateAngle = (first, second,offset=0) => {
+    const calculateAngle = (first, second, offset = 0) => {
       let y = second[1] - first[1];
       let x = second[0] - first[0];
-      let radAngle = Math.atan(y / x)+offset;
+      let radAngle = Math.atan(y / x) + offset;
       if (y <= 0 && x >= 0) {
         //第二象限
         console.log("第二象限");
@@ -238,7 +295,7 @@ const addAnimationMarker = (map, routeLines, speed,offset=0) => {
         ];
 
         pointMark.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
-        const angle = calculateAngle(start, end,offset);
+        const angle = calculateAngle(start, end, offset);
         const style = pointMark.getStyle() as Style;
         if (style && style.getImage) {
           style.getImage().setRotation(angle);
@@ -317,11 +374,21 @@ const initMap = () => {
   const offset = 105;
 
   buildMap();
-  addRoute(mapInstance, props.data, routeStyle);
+  addRoute(mapInstance, props.routeData, routeStyle);
   addControl(mapInstance);
-  addMarker(mapInstance, startPointInfo, shiziIcon);
-  addMarker(mapInstance, endPointInfo, daxiangIcon);
-  addAnimationMarker(mapInstance, props.data, iconSpeed,offset);
+  addMarker({
+    map: mapInstance,
+    pointData: startPointInfo,
+    icon: shiziIcon,
+    type: markerType.animation,
+  });
+  addMarker({
+    map: mapInstance,
+    pointData: endPointInfo,
+    icon: daxiangIcon,
+    type: markerType.animation,
+  });
+  addAnimationMarker(mapInstance, props.routeData, iconSpeed, offset);
 };
 
 const initZoomClick = () => {
