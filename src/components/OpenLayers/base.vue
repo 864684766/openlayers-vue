@@ -15,7 +15,7 @@ import VectorImageLayer from "ol/layer/VectorImage";
 import { Style, Icon, Text, Fill, Stroke } from "ol/style";
 import shiziIcon from "@/assets/imgs/shizi.svg";
 import daxiangIcon from "@/assets/imgs/daxiang.svg";
-import waimaiqishouIcon from "@/assets/imgs/waimaiqishou.svg";
+import qicheIcon from "@/assets/imgs/dahuoche.svg";
 
 import "ol/ol.css";
 import { LineString } from "ol/geom";
@@ -61,12 +61,17 @@ const addControl = (map) => {
 /**
  * 创建标记样式
  */
-const createMarkerStyle = (iconSrc, title) => {
+const createMarkerStyle = (
+  iconSrc,
+  title,
+  anchor = [0.5, 0.5],
+  scale = 0.2
+) => {
   return new Style({
     image: new Icon({
       src: iconSrc,
-      anchor: [0.5, 1],
-      scale: 0.2,
+      anchor,
+      scale,
     }),
     text: new Text({
       text: title,
@@ -87,21 +92,23 @@ const createMarkerStyle = (iconSrc, title) => {
  * @param curPoint 点位的信息
  * @param icon 图标的路径
  */
-const createIconMark = (curPoint, icon) => {
+const createIconMark = (curPoint, icon, anchor = [0.5, 0.5], scale = 0.2) => {
   const iconFeature = new Feature({
     ...curPoint,
     geometry: new Point(curPoint.gps_point),
     name: curPoint.gps_title,
   });
-  iconFeature.setStyle(createMarkerStyle(icon, curPoint.gps_title));
+  iconFeature.setStyle(
+    createMarkerStyle(icon, curPoint.gps_title, anchor, scale)
+  );
   return iconFeature;
 };
 
 /**
  *  添加标记
  */
-const addMarker = (map, pointData, icon) => {
-  const pointMark = createIconMark(pointData, icon);
+const addMarker = (map, pointData, icon, anchor = [0.5, 1], scale = 0.2) => {
+  const pointMark = createIconMark(pointData, icon, anchor, scale);
   const vectorSource = new VectorSource({
     features: [pointMark],
   });
@@ -154,12 +161,69 @@ const addAnimationMarker = (map, routeLines, speed) => {
       ...routeLineItem,
       gps_point: currentPoint[0],
     };
-    const { pointMark } = addMarker(map, currentMarket, waimaiqishouIcon);
+    const anchor = [0.5, 0.5];
+    const { pointMark } = addMarker(map, currentMarket, qicheIcon, anchor);
 
     let currentIndex = 0; // 当前点位索引
     const totalPoints = currentPoint.length; // 使用当前线路的点位数量
 
     let animalFrameId = null;
+    // /**
+    //  * 设置实时点位的角度
+    //  * @param prevPos
+    //  * @param curPos
+    //  */
+    // const calculateAngle = (mapInstance, prevPos, curPos) => {
+    //   const prevPixel = mapInstance.getPixelFromCoordinate(prevPos);
+    //   const curPixel = mapInstance.getPixelFromCoordinate(curPos);
+
+    //   const dx = curPixel[0] - prevPixel[0];
+    //   const dy = curPixel[1] - prevPixel[1];
+    //   const angle = Math.atan2(dy, dx); // 计算角度（弧度）
+
+    //   // 将弧度转换为度数
+    //   let deg = (angle * 180) / Math.PI;
+
+    //   // 确保角度在 0 到 360 度之间
+    //   if (deg < 0) {
+    //     deg += 360; // 将负角度转换为正角度
+    //   }
+
+    //   // 处理横向移动的情况
+    //   if (Math.abs(dy) < Math.abs(dx)) {
+    //     if (dx < 0) {
+    //       deg = 180; // 向左移动时，设置为 180 度
+    //     } else {
+    //       deg = 0; // 向右移动时，设置为 0 度
+    //     }
+    //   }
+
+    //   return deg; // 返回修正后的角度
+    // };
+
+    const calculateAngle = (first, second) => {
+      let y = second[1] - first[1];
+      let x = second[0] - first[0];
+      let radAngle = Math.atan(y / x);
+      if (y <= 0 && x >= 0) {
+        //第二象限
+        console.log("第二象限");
+        radAngle = -radAngle;
+      } else if (x >= 0 && y >= 0) {
+        //第一象限
+        radAngle = -radAngle;
+        console.log("第一象限");
+      } else if (x <= 0 && y >= 0) {
+        //第四象限
+        radAngle = Math.PI - radAngle;
+        console.log("第四象限");
+      } else if (x <= 0 && y <= 0) {
+        //第三象限
+        radAngle = Math.PI - radAngle;
+        console.log("第三象限");
+      }
+      return radAngle;
+    };
 
     const animateMarker = async () => {
       if (totalPoints === 0) {
@@ -174,34 +238,38 @@ const addAnimationMarker = (map, routeLines, speed) => {
 
       let progress = 0; // 动画进度
       /**
-       * 开启动画使标注移动
+       * 动画步骤
        */
       const animationStep = async () => {
         await delay(props.markReturnDelay);
         progress += speed; // 每次增加进度
+
         if (progress >= 1) {
           progress = 0; // 重置进度
           currentIndex++;
         }
-        if (!props.allowMarkReturn && currentIndex === totalPoints - 1) {
-          cancelAnimationFrame(animalFrameId);
-          return;
-        }
 
         if (currentIndex === totalPoints - 1) {
-          currentPoint = currentPoint.reverse();
+          currentPoint = currentPoint.reverse(); // 反转点位
           currentIndex = 0; // 循环移动到第一个点位
         }
 
         // 计算当前坐标
         const start = currentPoint[currentIndex];
         const end = currentPoint[(currentIndex + 1) % totalPoints];
+
+        // 使用线性插值计算当前坐标
         const currentCoordinates = [
           start[0] + (end[0] - start[0]) * progress,
           start[1] + (end[1] - start[1]) * progress,
         ];
-        pointMark.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
 
+        pointMark.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
+        const angle = calculateAngle(start, end);
+        const style = pointMark.getStyle() as Style;
+        if (style && style.getImage) {
+          style.getImage().setRotation(angle);
+        }
         animalFrameId = await requestAnimationFrame(animationStep); // 继续动画
       };
 
@@ -271,7 +339,7 @@ const initMap = () => {
     gps_id: 2,
   };
   // 地图上标注的移动速度，0-1之间，越大越快
-  const iconSpeed = 0.01;
+  const iconSpeed = 0.008;
 
   buildMap();
   addRoute(mapInstance, props.data, routeStyle);
@@ -292,7 +360,7 @@ onMounted(() => {
 
 <template>
   <div id="compass" class="compass-icon" @click="initZoomClick">初始缩放比</div>
-  <div id="map-app" ref="mapRef" class="w-full h-1/2" />
+  <div id="map-app" ref="mapRef" class="w-full h-[70%]" />
 </template>
 
 <style scoped>
