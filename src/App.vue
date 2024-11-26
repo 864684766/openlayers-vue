@@ -6,7 +6,7 @@ import {data} from './mock/data.js'
 
 <template>
   <!-- <TestMap /> -->
-  <BaseMap :data="data"/>
+  <BaseMap :data="data" :allow-mark-return="true" :mark-return-delay="0"/>
 </template>
 
 <style scoped>

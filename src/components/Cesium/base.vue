@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { ref, defineProps, defineEmits } from "vue";
+<script setup lang ="ts">
+import { ref, defineEmits } from "vue";
 
 const props = defineProps({
   message: {

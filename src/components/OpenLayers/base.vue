@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, defineProps, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { Map, View } from "ol";
 import TileLayer from "ol/layer/Tile";
 import { OSM, Vector as VectorSource } from "ol/source";
@@ -15,7 +15,7 @@ import VectorImageLayer from "ol/layer/VectorImage";
 import { Style, Icon, Text, Fill, Stroke } from "ol/style";
 import shiziIcon from "@/assets/imgs/shizi.svg";
 import daxiangIcon from "@/assets/imgs/daxiang.svg";
-import xiongmaoIcon from "@/assets/imgs/xiongmao.svg";
+import waimaiqishouIcon from "@/assets/imgs/waimaiqishou.svg";
 
 import "ol/ol.css";
 import { LineString } from "ol/geom";
@@ -24,6 +24,20 @@ const props = defineProps({
   data: {
     type: Object,
     required: true,
+  },
+  /**
+   * 允许动画标注返回
+   */
+  allowMarkReturn: {
+    type: Boolean,
+    default: false,
+  },
+  /**
+   * 标注在等待几秒后返回
+   */
+  markReturnDelay: {
+    type: Number,
+    default: 5000,
   },
 });
 
@@ -87,15 +101,15 @@ const createIconMark = (curPoint, icon) => {
  *  添加标记
  */
 const addMarker = (map, pointData, icon) => {
-  const buildPoint = createIconMark(pointData, icon);
+  const pointMark = createIconMark(pointData, icon);
   const vectorSource = new VectorSource({
-    features: [buildPoint],
+    features: [pointMark],
   });
   const vectorLayer = new VectorImageLayer({
     source: vectorSource,
   });
   map.addLayer(vectorLayer);
-  return { buildPoint };
+  return { pointMark };
 };
 
 /**
@@ -130,46 +144,70 @@ const addRoute = (map, routeLines, routeStyle) => {
 /**
  * 添加动画标记
  * @param map
+ * @param routeLines
+ * @param speed
  */
-const addAnimationMarker = (map, routeLines) => {
+const addAnimationMarker = (map, routeLines, speed) => {
   routeLines.forEach((routeLineItem) => {
-    const routeLineItemGpsPoints = routeLineItem.gps_point;
-    const startPoint = routeLineItemGpsPoints[0];
-    const endPoint = routeLineItemGpsPoints[routeLineItemGpsPoints.length - 1];
-    const markerInfo = {
+    let currentPoint = routeLineItem.gps_point;
+    const currentMarket = {
       ...routeLineItem,
-      gps_point: startPoint,
+      gps_point: currentPoint[0],
     };
-    const { buildPoint } = addMarker(map, markerInfo, xiongmaoIcon);
+    const { pointMark } = addMarker(map, currentMarket, waimaiqishouIcon);
 
     let currentIndex = 0; // 当前点位索引
-    const totalPoints = routeLineItemGpsPoints.length; // 使用当前线路的点位数量
+    const totalPoints = currentPoint.length; // 使用当前线路的点位数量
 
-    const animateMarker = () => {
+    let animalFrameId = null;
+
+    const animateMarker = async () => {
       if (totalPoints === 0) {
         // 如果没有点位，直接返回
         return;
       }
+      /**
+       * 标注在多久后从起止点移动
+       * @param ms 延迟时间
+       */
+      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
       let progress = 0; // 动画进度
-      const animationStep = () => {
-        progress += 0.001; // 每次增加进度
-        if (progress > 1) {
+      /**
+       * 开启动画使标注移动
+       */
+      const animationStep = async () => {
+        progress += speed; // 每次增加进度
+
+        if (progress >= 1) {
           progress = 0; // 重置进度
-          currentIndex = (currentIndex + 1) % totalPoints; // 循环移动到下一个点位
+          currentIndex++;
+        }
+
+        if (!props.allowMarkReturn && currentIndex === totalPoints - 1) {
+          cancelAnimationFrame(animalFrameId);
+          return;
+        }
+
+        if (currentIndex === totalPoints - 1) {
+          await delay(props.markReturnDelay);
+          currentPoint = currentPoint.reverse();
+          currentIndex = 0; // 循环移动到第一个点位
         }
 
         // 计算当前坐标
+        const start = currentPoint[currentIndex];
+        const end = currentPoint[(currentIndex + 1) % totalPoints];
         const currentCoordinates = [
-          startPoint[0] + (endPoint[0] - startPoint[0]) * progress,
-          startPoint[1] + (endPoint[1] - startPoint[1]) * progress,
+          start[0] + (end[0] - start[0]) * progress,
+          start[1] + (end[1] - start[1]) * progress,
         ];
-        buildPoint.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
+        pointMark.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
 
-        requestAnimationFrame(animationStep); // 继续动画
+        animalFrameId = await requestAnimationFrame(animationStep); // 继续动画
       };
 
-      animationStep(); // 启动动画
+      await animationStep(); // 启动动画
     };
 
     animateMarker(); // 启动动画
@@ -217,7 +255,7 @@ const initMap = () => {
       view: new View({
         projection: "EPSG:4326", // here is the view projection
         center: [120.024029, 30.355764],
-        zoom: 14,
+        zoom: 10,
       }),
     });
   };
@@ -234,13 +272,15 @@ const initMap = () => {
     gps_time: "2023-07-05 14:05:06",
     gps_id: 2,
   };
+  // 地图上标注的移动速度，0-1之间，越大越快
+  const iconSpeed = 0.01;
 
   buildMap();
   addRoute(mapInstance, props.data, routeStyle);
   addControl(mapInstance);
   addMarker(mapInstance, startPointInfo, shiziIcon);
   addMarker(mapInstance, endPointInfo, daxiangIcon);
-  addAnimationMarker(mapInstance, props.data);
+  addAnimationMarker(mapInstance, props.data, iconSpeed);
 };
 
 const initZoomClick = () => {
