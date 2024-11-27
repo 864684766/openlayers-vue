@@ -1,3 +1,4 @@
+import qicheIcon from "@/assets/imgs/qiche.svg";
 export const data = [
   {
     gps_point: [
@@ -14,7 +15,8 @@ export const data = [
     ],
     gps_title: "GPS_007",
     gps_id: 7,
-    gps_time:"2024-09-26 16:50:00"
+    gps_time:"2024-09-26 16:50:00",
+    gps_icon: qicheIcon,
   },
   {
     gps_point: [
@@ -51,6 +53,7 @@ export const data = [
     gps_title: "GPS_008",
     gps_id: 8,
     gps_time: "2024-09-26 16:50:00",
+    gps_icon: qicheIcon,
   },
   // {
   //   gps_point: [

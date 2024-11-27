@@ -7,6 +7,16 @@ export enum markerType {
    * 动画类型点位
    */
   animation = "animation",
+
+  /**
+   * 起点类型点位
+   */
+  startPoint = "startPoint",
+
+  /**
+   * 终点类型点位
+   */
+  endPoint = "endPoint",
 }
 
 /**

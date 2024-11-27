@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { Map, View } from "ol";
 import TileLayer from "ol/layer/Tile";
 import { OSM, Vector as VectorSource } from "ol/source";
@@ -13,27 +13,27 @@ import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import VectorImageLayer from "ol/layer/VectorImage";
 import { Style, Icon, Text, Fill, Stroke } from "ol/style";
-import shiziIcon from "@/assets/imgs/shizi.svg";
-import daxiangIcon from "@/assets/imgs/daxiang.svg";
-import qicheIcon from "@/assets/imgs/qiche.svg";
 
 import "ol/ol.css";
 import { LineString } from "ol/geom";
-import { markerType } from "@/enums";
+import { lineType, markerType } from "@/enums";
+import {
+  IaddAnimationMarker,
+  IaddRoute,
+  IcreateIconMark,
+  IcreateMarkerStyle,
+  IcreateSingleRoute,
+  IlinePool,
+  IMarkPoint,
+  IpointPool,
+} from "@/type";
 
 const props = defineProps({
   /**
-   * 路径数据
+   * 点位数据集合
+   * 格式：[]
    */
-  routeData: {
-    type: Object,
-    required: false,
-  },
-
-  /**
-   * 点位数据
-   */
-  pointData: {
+  pointDataList: {
     type: Array,
     required: false,
   },
@@ -65,6 +65,13 @@ const props = defineProps({
     type: String,
     default: "history",
   },
+  mapCenter: {
+    type: Array<number>,
+    required: false,
+    default: () => {
+      return [120.024029, 30.355764];
+    },
+  },
 });
 
 const mapRef = ref();
@@ -80,40 +87,39 @@ let mapInstance = null;
  * 1. 轨迹 trackLine
  *
  */
-const linePool = [];
+const linePool: IlinePool[] = [];
 
 /**
  * 点位池子,用于存储不同类型的点位，方便后续清理的时候操作
  */
-const pointPool = [];
+const pointPool: IpointPool[] = [];
 
 /**
  *  添加控件
  * @param map
  */
-const addControl = (map) => {
+const addControl = () => {
   const compassElement = document.getElementById("compass");
   const compassControl = new Control({ element: compassElement });
-  map.addControl(compassControl);
+  mapInstance.addControl(compassControl);
 };
 
 /**
  * 创建标记样式
  */
-const createMarkerStyle = (
-  iconSrc,
-  title,
+const createMarkerStyle = ({
+  curPoint,
   anchor = [0.5, 0.5],
-  scale = 0.2
-) => {
+  scale = 0.2,
+}: IcreateMarkerStyle) => {
   return new Style({
     image: new Icon({
-      src: iconSrc,
+      src: curPoint.point_icon,
       anchor,
       scale,
     }),
     text: new Text({
-      text: title,
+      text: curPoint.gps_title,
       offsetY: -50,
       fill: new Fill({
         color: "#000",
@@ -131,15 +137,17 @@ const createMarkerStyle = (
  * @param curPoint 点位的信息
  * @param icon 图标的路径
  */
-const createIconMark = (curPoint, icon, anchor = [0.5, 0.5], scale = 0.2) => {
+const createIconMark = ({
+  curPoint,
+  anchor = [0.5, 0.5],
+  scale = 0.2,
+}: IcreateIconMark) => {
   const iconFeature = new Feature({
     ...curPoint,
     geometry: new Point(curPoint.gps_point),
     name: curPoint.gps_title,
   });
-  iconFeature.setStyle(
-    createMarkerStyle(icon, curPoint.gps_title, anchor, scale)
-  );
+  iconFeature.setStyle(createMarkerStyle({ curPoint, anchor, scale }));
   return iconFeature;
 };
 
@@ -147,36 +155,55 @@ const createIconMark = (curPoint, icon, anchor = [0.5, 0.5], scale = 0.2) => {
  *  添加标记
  */
 const addMarker = ({
-  map,
-  pointData,
-  icon,
+  pointDataList,
   anchor = [0.5, 1],
   scale = 0.2,
-  type,
-}) => {
-  const pointMark = createIconMark(pointData, icon, anchor, scale);
-  const vectorSource = new VectorSource({
-    features: [pointMark],
+}: IMarkPoint) => {
+  pointDataList.forEach((pointDataItem) => {
+    const curPoint = {
+      gps_point: pointDataItem.gps_point,
+      gps_title: pointDataItem.gps_title,
+      gps_time: pointDataItem.gps_time,
+      gps_id: pointDataItem.gps_id,
+      point_type: pointDataItem.point_type,
+      point_icon: pointDataItem.point_icon,
+    };
+    const pointMark = createIconMark({ curPoint, anchor, scale });
+    const vectorSource = new VectorSource({
+      features: [pointMark],
+    });
+    const vectorLayer = new VectorImageLayer({
+      source: vectorSource,
+    });
+    pointMark.setId(pointDataItem.gps_id);
+    mapInstance.addLayer(vectorLayer);
+    const pointItem = { instance: pointMark, type: pointDataItem.point_type };
+    pointPool.push(pointItem);
   });
-  const vectorLayer = new VectorImageLayer({
-    source: vectorSource,
-  });
-  map.addLayer(vectorLayer);
-  const pointItem = { instance: pointMark, type };
-  pointPool.push(pointItem);
-  return { pointMark };
 };
 
 /**
  * 添加路线
  * @param map
  */
-const addRoute = (map, routeLines, routeStyle, routeType = "trackLine") => {
+const addRoute = ({
+  routeLines,
+  routeStyle,
+  routeType = lineType.track,
+}: IaddRoute) => {
+  // 路线样式
+  const buldStyle = [
+    new Style({
+      stroke: new Stroke({
+        ...routeStyle.strock,
+      }),
+    }),
+  ];
   /**
    *  创建一条线
    * @param points
    */
-  const createSingleRoute = (route) => {
+  const createSingleRoute = (route: IcreateSingleRoute) => {
     const source = new VectorSource();
     const linePath = new LineString(route);
     const routeFeature = new Feature({
@@ -185,14 +212,14 @@ const addRoute = (map, routeLines, routeStyle, routeType = "trackLine") => {
     source.addFeature(routeFeature);
     const routeLayer = new VectorImageLayer({
       source: source,
-      style: routeStyle,
+      style: buldStyle,
     });
-    map.addLayer(routeLayer);
+    mapInstance.addLayer(routeLayer);
     return { routeFeature };
   };
 
-  routeLines.forEach((routeLines) => {
-    const { routeFeature } = createSingleRoute(routeLines.gps_point);
+  routeLines.forEach((routeLine) => {
+    const { routeFeature } = createSingleRoute(routeLine.gps_point);
     const lineItem = { type: routeType, instance: routeFeature };
     linePool.push(lineItem);
   });
@@ -204,25 +231,36 @@ const addRoute = (map, routeLines, routeStyle, routeType = "trackLine") => {
  * @param routeLines
  * @param speed 标注的速度
  * @param offset 如果图像是竖着的并且头向上，就+105个角度可保证图像的正常运行，如果是横着的并且头向右，就不要加105个角度，正常写可保证图像的正常运行
+ * @param scale 标记的大小
+ * @param anchor 标记的锚点,这个对象通常需要提供 size（尺寸）和 offset（偏移）属性组成一个数组
  */
-const addAnimationMarker = (map, routeLines, speed, offset = 0) => {
+const addAnimationMarker = ({
+  routeLines,
+  speed,
+  offset = 0,
+  scale = 0.2,
+  anchor = [0.5, 0.5],
+}: IaddAnimationMarker) => {
   routeLines.forEach((routeLineItem) => {
-    let currentPoint = routeLineItem.gps_point;
+    let point = routeLineItem.gps_point;
     const currentMarket = {
       ...routeLineItem,
-      gps_point: currentPoint[0],
+      gps_point: point[0],
+      point_type: markerType.animation,
+      point_icon: routeLineItem.gps_icon,
     };
-    const anchor = [0.5, 0.5];
-    const { pointMark } = addMarker({
-      map,
-      pointData: currentMarket,
-      icon: qicheIcon,
+    addMarker({
+      pointDataList: [currentMarket],
       anchor,
-      type: markerType.animation,
+      scale,
     });
 
+    const pointMark = pointPool.find(
+      (x) => x.instance.getId() === routeLineItem.gps_id
+    )?.instance;
+
     let currentIndex = 0; // 当前点位索引
-    const totalPoints = currentPoint.length; // 使用当前线路的点位数量
+    const totalPoints = point.length; // 使用当前线路的点位数量
     let animalFrameId = null; // 动画帧ID
 
     /**
@@ -237,20 +275,16 @@ const addAnimationMarker = (map, routeLines, speed, offset = 0) => {
       let radAngle = Math.atan(y / x) + offset;
       if (y <= 0 && x >= 0) {
         //第二象限
-        console.log("第二象限");
         radAngle = -radAngle;
       } else if (x >= 0 && y >= 0) {
         //第一象限
         radAngle = -radAngle;
-        console.log("第一象限");
       } else if (x <= 0 && y >= 0) {
         //第四象限
         radAngle = Math.PI - radAngle;
-        console.log("第四象限");
       } else if (x <= 0 && y <= 0) {
         //第三象限
         radAngle = Math.PI - radAngle;
-        console.log("第三象限");
       }
       return radAngle;
     };
@@ -280,20 +314,22 @@ const addAnimationMarker = (map, routeLines, speed, offset = 0) => {
         }
 
         if (currentIndex === totalPoints - 1) {
-          currentPoint = currentPoint.reverse(); // 反转点位
+          point = point.reverse(); // 反转点位
           currentIndex = 0; // 循环移动到第一个点位
         }
 
         // 计算当前坐标
-        const start = currentPoint[currentIndex];
-        const end = currentPoint[(currentIndex + 1) % totalPoints];
+        const start = point[currentIndex];
+        const end = point[(currentIndex + 1) % totalPoints];
 
         // 使用线性插值计算当前坐标
         const currentCoordinates = [
           start[0] + (end[0] - start[0]) * progress,
           start[1] + (end[1] - start[1]) * progress,
         ];
-
+        if (!pointMark) {
+          return;
+        }
         pointMark.getGeometry().setCoordinates(currentCoordinates); // 更新动画标记的位置
         const angle = calculateAngle(start, end, offset);
         const style = pointMark.getStyle() as Style;
@@ -320,16 +356,6 @@ const initMap = () => {
   const scaleLineControl = new ScaleLine({
     bar: true,
   });
-  // 路线样式
-  const routeStyle = [
-    new Style({
-      stroke: new Stroke({
-        color: "#00A4F7",
-        width: 3,
-        lineDash: [10, 10],
-      }),
-    }),
-  ];
 
   /**
    * 构建地图实例
@@ -350,45 +376,14 @@ const initMap = () => {
       ],
       view: new View({
         projection: "EPSG:4326", // here is the view projection
-        center: [120.024029, 30.355764],
+        center: props.mapCenter,
         zoom: 10,
       }),
     });
   };
 
-  const startPointInfo = {
-    gps_point: [120.093996, 30.431549],
-    gps_title: "开始点位",
-    gps_time: "2023-07-05 14:05:06",
-    gps_id: 1,
-  };
-  const endPointInfo = {
-    gps_point: [119.985883, 30.280393],
-    gps_title: "结束点位",
-    gps_time: "2023-07-05 14:05:06",
-    gps_id: 2,
-  };
-  // 地图上标注的移动速度，0-1之间，越大越快
-  const iconSpeed = 0.008;
-  // icon的偏移量
-  const offset = 105;
-
   buildMap();
-  addRoute(mapInstance, props.routeData, routeStyle);
-  addControl(mapInstance);
-  addMarker({
-    map: mapInstance,
-    pointData: startPointInfo,
-    icon: shiziIcon,
-    type: markerType.animation,
-  });
-  addMarker({
-    map: mapInstance,
-    pointData: endPointInfo,
-    icon: daxiangIcon,
-    type: markerType.animation,
-  });
-  addAnimationMarker(mapInstance, props.routeData, iconSpeed, offset);
+  addControl();
 };
 
 const initZoomClick = () => {
@@ -397,6 +392,26 @@ const initZoomClick = () => {
 
 onMounted(() => {
   initMap();
+});
+
+/**
+ * 监听外部数据变化,根据变化执行副作用
+ */
+watch(
+  () => [props.mapCenter],
+  ([newMapCenter]) => {
+    //#region 监听地图中心点变化
+    if (newMapCenter) {
+      mapInstance?.getView().setCenter(newMapCenter);
+    }
+    //#endregion
+  }
+);
+
+defineExpose({
+  addMarker,
+  addRoute,
+  addAnimationMarker,
 });
 </script>
 
