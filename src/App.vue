@@ -32,10 +32,19 @@ const iconSpeed = 0.01;
 const offset = 105;
 const baseMapRef = ref(null);
 
-const mapCenter = ref([119.985883, 30.280393])
+const overLayType = ref([
+  { label: "全部", value: "" },
+  { label: "起点", value: markerType.startPoint },
+  { label: "终点", value: markerType.endPoint },
+  { label: "动画轨迹", value: markerType.animation },
+]);
+
+const selOverLayType = ref("");
+
+const mapCenter = ref([119.985883, 30.280393]);
 
 const addMarker = () => {
-  const params= {
+  const params = {
     pointDataList: pointList,
     anchor: [0.5, 0.5],
     scale: 0.2,
@@ -48,7 +57,7 @@ const addRoute = () => {
     strock: {
       color: "#00A4F7",
       width: 2,
-      lineDash: [10,10],
+      lineDash: [10, 10],
     },
   };
   const params = {
@@ -69,8 +78,12 @@ const addAnimationMarker = () => {
 };
 
 const setMapCenter = () => {
-  mapCenter.value = [116.394495,39.904087]
-}
+  mapCenter.value = [116.394495, 39.904087];
+};
+
+const removeMarkersByType = () => {
+  baseMapRef.value.removeMarkersByType(selOverLayType.value);
+};
 </script>
 
 <template>
@@ -106,6 +119,17 @@ const setMapCenter = () => {
       @click="setMapCenter"
     >
       设置中心点
+    </button>
+    <select v-model="selOverLayType" class="mr-2 p-2 rounded-sm">
+      <option v-for="item in overLayType" :value="item.value">
+        {{ item.label }}
+      </option>
+    </select>
+    <button
+      class="bg-blue-500 text-[#fff] p-2 rounded-sm mr-2"
+      @click="removeMarkersByType"
+    >
+      移除指定覆盖物
     </button>
   </div>
 </template>

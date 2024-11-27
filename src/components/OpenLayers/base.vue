@@ -82,17 +82,22 @@ const mapRef = ref();
 let mapInstance = null;
 
 /**
+ * 动画帧ID
+ */
+let animalFrameId = null;
+
+/**
  * 路线池，用于存储不同类型的路线，方便后续清理的时候操作
  * 当前以下类型：
  * 1. 轨迹 trackLine
  *
  */
-const linePool: IlinePool[] = [];
+let linePool: IlinePool[] = [];
 
 /**
  * 点位池子,用于存储不同类型的点位，方便后续清理的时候操作
  */
-const pointPool: IpointPool[] = [];
+let pointPool: IpointPool[] = [];
 
 /**
  *  添加控件
@@ -261,7 +266,6 @@ const addAnimationMarker = ({
 
     let currentIndex = 0; // 当前点位索引
     const totalPoints = point.length; // 使用当前线路的点位数量
-    let animalFrameId = null; // 动画帧ID
 
     /**
      *  获取两个点之间的角度,如果图像是竖着的并且头向上，就+105个角度可保证图像的正常运行，如果是横着的并且头向右，就不要加105个角度，正常写可保证图像的正常运行
@@ -347,6 +351,63 @@ const addAnimationMarker = ({
 };
 
 /**
+ * 根据类型移除地图指定的标记
+ * @param type
+ */
+const removeMarkersByType = (type: markerType | lineType) => {
+  const overlayInstances = [...pointPool, ...linePool];
+  if (!mapInstance) {
+    return;
+  }
+
+  // 找到所有与指定类型匹配的标记实例
+  const markersToRemove = overlayInstances.filter((item) => item.type === type);
+
+  // 移除匹配的标记实例
+  markersToRemove.forEach((item) => {
+    if (item.instance) {
+      const layerToRemove = mapInstance
+        .getLayers()
+        .getArray()
+        .find((layer) => {
+          const source = layer.getSource();
+          return source instanceof VectorSource; // 确保是 VectorSource
+        });
+      if (layerToRemove) {
+        const source = layerToRemove.getSource() as VectorSource;
+        source.removeFeature(item.instance); // 从源中移除特定的 Feature
+      }
+    }
+  });
+
+  // 如果没有指定类型，则移除所有标记
+  if (!type) {
+    overlayInstances.forEach((item) => {
+      if (item.instance) {
+        const layerToRemove = mapInstance
+          .getLayers()
+          .getArray()
+          .filter((layer) => {
+            const source = layer.getSource();
+            return source instanceof VectorSource; // 确保是 VectorSource
+          });
+        if (layerToRemove.length) {
+          layerToRemove.forEach((layer) => {
+            const source = layer.getSource() as VectorSource;
+            source.removeFeature(item.instance); // 从源中移除所有 Feature
+          });
+        }
+      }
+    });
+    if (animalFrameId) {
+      cancelAnimationFrame(animalFrameId);
+    }
+    pointPool = [];
+    linePool = [];
+  }
+};
+
+/**
  * 初始化地图
  */
 const initMap = () => {
@@ -412,6 +473,7 @@ defineExpose({
   addMarker,
   addRoute,
   addAnimationMarker,
+  removeMarkersByType,
 });
 </script>
 
