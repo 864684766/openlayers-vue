@@ -2,7 +2,7 @@
  *  @module MarkerType 点位类型
  *  @description 枚举类型
  */
-export enum markerType {
+export enum overlayType {
   /**
    * 动画类型点位
    */
@@ -17,12 +17,6 @@ export enum markerType {
    * 终点类型点位
    */
   endPoint = "endPoint",
-}
-
-/**
- * 线路类型
- */
-export enum lineType {
   /**
    * 轨迹线
    */

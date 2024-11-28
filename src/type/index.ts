@@ -1,4 +1,4 @@
-import { markerType, lineType } from "@/enums";
+import { overlayType } from "@/enums";
 import Feature from "ol/Feature";
 import { Options as StrockStyle } from "ol/style/Stroke";
 
@@ -7,7 +7,7 @@ type IpointDataItem = {
   gps_title: string;
   gps_time: string;
   gps_id: number;
-  point_type: markerType;
+  point_type: overlayType;
   point_icon: string;
 };
 
@@ -42,18 +42,15 @@ export type ILineStyle = {
 export type IaddRoute = {
   routeLines: IrouteLine[];
   routeStyle: ILineStyle;
-  routeType: lineType;
+  routeType: overlayType;
 };
 
-export type IpointPool = {
+export type IoverlayPool = {
   instance: Feature<any>;
-  type: markerType;
+  type: overlayType;
 };
 
-export type IlinePool = {
-  instance: Feature<any>;
-  type: lineType;
-};
+
 
 export type IcreateIconMark = {
   curPoint: IpointDataItem;

@@ -2,7 +2,7 @@
 import BaseMap from "./components/OpenLayers/base.vue";
 // import TestMap from './components/OpenLayers/test.vue'
 import { data } from "./mock/data.js";
-import { markerType } from "@/enums";
+import { overlayType } from "@/enums";
 import shiziIcon from "@/assets/imgs/shizi.svg";
 import daxiangIcon from "@/assets/imgs/daxiang.svg";
 import { ref } from "vue";
@@ -14,7 +14,7 @@ const pointList = [
     gps_title: "开始点位",
     gps_time: "2023-07-05 14:05:06",
     gps_id: 1,
-    point_type: markerType.startPoint,
+    point_type: overlayType.startPoint,
     point_icon: daxiangIcon,
   },
   {
@@ -22,7 +22,7 @@ const pointList = [
     gps_title: "结束点位",
     gps_time: "2023-07-05 14:05:06",
     gps_id: 2,
-    point_type: markerType.endPoint,
+    point_type: overlayType.endPoint,
     point_icon: shiziIcon,
   },
 ];
@@ -34,9 +34,10 @@ const baseMapRef = ref(null);
 
 const overLayType = ref([
   { label: "全部", value: "" },
-  { label: "起点", value: markerType.startPoint },
-  { label: "终点", value: markerType.endPoint },
-  { label: "动画轨迹", value: markerType.animation },
+  { label: "起点", value: overlayType.startPoint },
+  { label: "终点", value: overlayType.endPoint },
+  { label: "路线", value: overlayType.track },
+  { label: "动画轨迹", value: overlayType.animation },
 ]);
 
 const selOverLayType = ref("");
