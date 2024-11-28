@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import { Map, View } from "ol";
-import TileLayer from "ol/layer/Tile";
-import { OSM, Vector as VectorSource } from "ol/source";
+import {
+  OSM,
+  Vector as VectorSource,
+  XYZ,
+  VectorTile as VectorTileSource,
+} from "ol/source";
+import { GeoJSON, MVT } from "ol/format";
 import {
   defaults as defaultControls,
   Control,
@@ -11,7 +16,12 @@ import {
 } from "ol/control.js";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
-import VectorImageLayer from "ol/layer/VectorImage";
+import {
+  VectorImage as VectorImageLayer,
+  Tile as TileLayer,
+  VectorTile as VectorTileLayer,
+  Vector as VectorLayer,
+} from "ol/layer";
 import { Style, Icon, Text, Fill, Stroke } from "ol/style";
 
 import "ol/ol.css";
@@ -26,6 +36,9 @@ import {
   IMarkPoint,
   IoverlayPool,
 } from "@/type";
+import { createXYZ } from "ol/tilegrid";
+
+import geojsonData from "@/mock/hangzhouData.js";
 
 const props = defineProps({
   /**
@@ -386,6 +399,74 @@ const removeMarkersByType = (type: overlayType) => {
   }
 };
 
+const addHighlightEvent = () => {
+  mapInstance.on("pointermove", function (evt) {
+    const feature = mapInstance.forEachFeatureAtPixel(evt.pixel, (feature) => {
+      return feature;
+    });
+    console.log(feature);
+    if (feature) {
+      // console.log("feature", feature);
+      // // 添加高亮样式
+      // const highlightStyle = new Style({
+      //   stroke: new Stroke({
+      //     color: "rgba(255, 255, 0, 1)", // 高亮边框颜色
+      //     width: 3,
+      //   }),
+      //   fill: new Fill({
+      //     color: "rgba(255, 255, 0, 0.5)", // 高亮填充颜色
+      //   }),
+      // });
+      // feature.setStyle(highlightStyle);
+    }
+  });
+};
+
+// 创建标注图层
+const createCva_w = () => {
+  var source = new XYZ({
+    // 使用天地图的注记图层 URL
+    url: "http://t{0-7}.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=c93ad17d28ae70bd7bcb4b8e7b859f75",
+    // 这里可以添加其他参数，例如图层类型
+  });
+
+  var layer = new TileLayer({
+    source: source,
+    zIndex: 1, // 设置图层的层级，可以设置-1观察效果
+    visible: true, // 默认显示
+  });
+
+  mapInstance.addLayer(layer);
+
+  // 添加点击事件
+  mapInstance.on("singleclick", (event) => {
+    const coordinate = mapInstance.getEventCoordinate(event.originalEvent);
+    // 在这里可以添加逻辑，例如弹出信息框
+    alert(`您点击了坐标: ${coordinate}`);
+  });
+};
+
+/**
+ * 创建矢量GEOJSON的底图
+ */
+const createGeoJsonLayer = () => {
+  const vectorSource = new VectorSource({
+    features: new GeoJSON().readFeatures(geojsonData, {
+      featureProjection: "EPSG:4326",
+    }),
+  });
+  const vectorLayer = new VectorLayer({
+    source: vectorSource,
+    style: new Style({
+      // fill: new Fill({
+      //   color: "rgba(0, 150, 0, 0.5)", // 设置填充颜色
+      // }),
+      stroke: new Stroke({ color: "#319FD3", width: 2 }),
+    }),
+  });
+  mapInstance.addLayer(vectorLayer);
+};
+
 /**
  * 初始化地图
  */
@@ -408,11 +489,23 @@ const initMap = () => {
         scaleLineControl,
       ]),
       layers: [
-        new TileLayer({
-          source: new OSM(),
-          visible: true,
-          className: "map-layer",
-        }),
+        // new TileLayer({
+        //   source: new XYZ({
+        //     // url: 'https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=YOUR_MAPBOX_ACCESS_TOKEN',
+        //     // url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain/MapServer/tile/{z}/{y}/{x}",
+        //     // url:
+        //     // "http://t{0-7}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=c93ad17d28ae70bd7bcb4b8e7b859f75",
+        //     // "http://t{0-7}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=c93ad17d28ae70bd7bcb4b8e7b859f75",
+        //     // 'https://stamen-tiles.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png'
+        //   }),
+        //   visible: true, // 默认显示
+        //   className: "map-layer",
+        // }),
+        // new TileLayer({
+        //   source: new OSM(),
+        //   visible: true,
+        //   className: "map-layer",
+        // }),
       ],
       view: new View({
         projection: "EPSG:4326", // here is the view projection
@@ -422,8 +515,13 @@ const initMap = () => {
     });
   };
 
+  // 中文注记
+
   buildMap();
   addControl();
+  createGeoJsonLayer();
+  createCva_w();
+  addHighlightEvent();
 };
 
 const initZoomClick = () => {
