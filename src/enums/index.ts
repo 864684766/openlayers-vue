@@ -22,3 +22,29 @@ export enum overlayType {
    */
   track = "track",
 }
+
+/**
+ * 加载地图类型
+ */
+export enum loadMapType {
+  
+  /**
+   * 天地图街道地图
+   */
+  tianStreetMap="tianStreetMap",
+
+  /**
+   * 天地图卫星地图
+   */
+  tianSatelliteMap="tianSatelliteMap",
+
+  /**
+   * 默认地图
+   */
+  defaultMap="defaultMap",
+
+  /**
+   * geoJson地图
+   */
+  geoJsonMap="geoJsonMap"
+}

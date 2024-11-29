@@ -1,8 +1,9 @@
 import { overlayType } from "@/enums";
 import Feature from "ol/Feature";
 import { Options as StrockStyle } from "ol/style/Stroke";
+import type{ Map } from "ol";
 
-type IpointDataItem = {
+type IPointDataItem = {
   gps_point: Array<number>;
   gps_title: string;
   gps_time: string;
@@ -12,12 +13,12 @@ type IpointDataItem = {
 };
 
 export type IMarkPoint = {
-  pointDataList: IpointDataItem[];
+  pointDataList: IPointDataItem[];
   anchor?: number[];
   scale?: number;
 };
 
-export type IrouteLine = {
+export type IRouteLine = {
   gps_point: Array<number[]>;
   gps_title: string;
   gps_id: number;
@@ -25,41 +26,62 @@ export type IrouteLine = {
   gps_icon: string;
 };
 
-export type IaddAnimationMarker = {
-  routeLines: IrouteLine[];
+export type IAddAnimationMarker = {
+  routeLines: IRouteLine[];
   speed: number;
   offset?: number;
   scale?: number;
   anchor: number[];
 };
 
-export type IcreateSingleRoute = IrouteLine["gps_point"];
+export type ICreateSingleRoute = IRouteLine["gps_point"];
 
 export type ILineStyle = {
   strock: StrockStyle;
 };
 
-export type IaddRoute = {
-  routeLines: IrouteLine[];
+export type IAddRoute = {
+  routeLines: IRouteLine[];
   routeStyle: ILineStyle;
   routeType: overlayType;
 };
 
-export type IoverlayPool = {
+export type IOverlayPool = {
   instance: Feature<any>;
   type: overlayType;
 };
 
 
 
-export type IcreateIconMark = {
-  curPoint: IpointDataItem;
+export type ICreateIconMark = {
+  curPoint: IPointDataItem;
   anchor: number[];
   scale: number;
 };
 
-export type IcreateMarkerStyle = {
-  curPoint: Pick<IpointDataItem, "point_icon" | "gps_title">;
+export type ICreateMarkerStyle = {
+  curPoint: Pick<IPointDataItem, "point_icon" | "gps_title">;
   anchor: number[];
   scale: number;
 };
+
+
+export class ICreateMap{
+  mapInstance: Map;
+};
+
+export class ICreateTianMapCva_w extends ICreateMap {
+}
+
+export class ILoadDefaultMap extends ICreateMap {
+}
+
+export class ILoadTiaSatelliteMap extends ICreateMap {
+}
+
+export class ILoadTianStreetMap extends ICreateMap {
+}
+
+export class ILoadGeoJsonLayer extends ICreateMap {
+  geoJsonUrl: string;
+}

@@ -2,11 +2,12 @@
 import BaseMap from "./components/OpenLayers/base.vue";
 // import TestMap from './components/OpenLayers/test.vue'
 import { data } from "./mock/data.js";
-import { overlayType } from "@/enums";
+import { loadMapType, overlayType } from "@/enums";
 import shiziIcon from "@/assets/imgs/shizi.svg";
 import daxiangIcon from "@/assets/imgs/daxiang.svg";
 import { ref } from "vue";
 import { ILineStyle } from "./type";
+import mapData from "@/mock/mapData.js";
 
 const pointList = [
   {
@@ -40,7 +41,16 @@ const overLayType = ref([
   { label: "动画轨迹", value: overlayType.animation },
 ]);
 
+const mapType = ref([
+  { label: "天地图卫星", value: loadMapType.tianSatelliteMap },
+  { label: "天地图街道", value: loadMapType.tianStreetMap },
+  { label: "原生默认", value: loadMapType.defaultMap },
+  { label: "geojson矢量", value: loadMapType.geoJsonMap },
+]);
+
 const selOverLayType = ref("");
+
+const selMapType = ref("");
 
 const mapCenter = ref([119.985883, 30.280393]);
 
@@ -85,6 +95,10 @@ const setMapCenter = () => {
 const removeMarkersByType = () => {
   baseMapRef.value.removeMarkersByType(selOverLayType.value);
 };
+
+// const loadMapByTypeHandle = () => {
+  
+// };
 </script>
 
 <template>
@@ -94,6 +108,8 @@ const removeMarkersByType = () => {
     :allow-mark-return="true"
     :mark-return-delay="0"
     :map-center="mapCenter"
+    :load-map-type="selMapType"
+    :geojson-data="mapData"
     ref="baseMapRef"
   />
   <div class="mt-2 ml-2">
@@ -132,6 +148,13 @@ const removeMarkersByType = () => {
     >
       移除指定覆盖物
     </button>
+
+    <span class="mr-2 ">加载指定的地图类型:</span>
+    <select v-model="selMapType" placeholder="选择一个地图类型" class="mr-2 p-2 rounded-sm">
+      <option v-for="item in mapType" :value="item.value">
+        {{ item.label }}
+      </option>
+    </select>
   </div>
 </template>
 
