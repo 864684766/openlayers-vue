@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from "vue";
 import { Map, View } from "ol";
-import { Vector as VectorSource } from "ol/source";
+import { OSM, Vector as VectorSource } from "ol/source";
 import { GeoJSON, MVT } from "ol/format";
 import {
   defaults as defaultControls,
@@ -11,7 +11,7 @@ import {
 } from "ol/control.js";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
-import { VectorImage as VectorImageLayer } from "ol/layer";
+import { VectorImage as VectorImageLayer, Tile as TileLayer } from "ol/layer";
 import { Style, Icon, Text, Fill, Stroke } from "ol/style";
 
 import "ol/ol.css";
@@ -415,7 +415,17 @@ const removeMarkersByType = (type: overlayType) => {
   }
 };
 
-const addHighlightEvent = () => {
+/**
+ * 添加地图的事件
+ */
+const addEventListener = () => {
+  // 添加点击事件
+  mapInstance.on("singleclick", (event) => {
+    const coordinate = mapInstance.getEventCoordinate(event.originalEvent);
+    // 在这里可以添加逻辑，例如弹出信息框
+    alert(`您点击了坐标: ${coordinate}`);
+  });
+  // 添加鼠标移动事件
   mapInstance.on("pointermove", function (evt) {
     const feature = mapInstance.forEachFeatureAtPixel(evt.pixel, (feature) => {
       return feature;
@@ -424,17 +434,8 @@ const addHighlightEvent = () => {
     if (feature) {
     }
   });
-};
-
-/**
- * 添加地图的单击事件
- */
-const addMapSingleClickEvent = () => {
-  // 添加点击事件
-  mapInstance.on("singleclick", (event) => {
-    const coordinate = mapInstance.getEventCoordinate(event.originalEvent);
-    // 在这里可以添加逻辑，例如弹出信息框
-    alert(`您点击了坐标: ${coordinate}`);
+  mapInstance.on("postrender", (event) => {
+    console.log('地图加载完成');
   });
 };
 
@@ -459,7 +460,11 @@ const initMap = () => {
         rotateControl,
         scaleLineControl,
       ]),
-      layers: [],
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+        }),
+      ],
       view: new View({
         projection: "EPSG:4326", // here is the view projection
         center: props.mapCenter,
@@ -471,9 +476,7 @@ const initMap = () => {
   // 中文注记
   buildMap();
   addControl();
-  addHighlightEvent();
-  addMapSingleClickEvent();
-  debugger
+  addEventListener();
   loadMapByType(mapObject.value);
 };
 
@@ -499,6 +502,7 @@ watch(
 
     //#region 监听地图类型变化，根据变化加载新的地图类型
     if (newMapObject) {
+      console.log('地图加载中');
       loadMapByType(mapObject.value);
     }
     //#endregion
