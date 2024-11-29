@@ -2,7 +2,6 @@
 import { ref, onMounted, watch, computed } from "vue";
 import { Map, View } from "ol";
 import { OSM, Vector as VectorSource } from "ol/source";
-import { GeoJSON, MVT } from "ol/format";
 import {
   defaults as defaultControls,
   Control,
@@ -435,7 +434,7 @@ const addEventListener = () => {
     }
   });
   mapInstance.on("postrender", (event) => {
-    console.log('地图加载完成');
+    console.log("地图加载完成");
   });
 };
 
@@ -462,7 +461,63 @@ const initMap = () => {
       ]),
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({
+            // tileLoadFunction: (imageTile: any, src) => {
+            //   const img = new Image();
+            //   img.setAttribute("crossOrigin", "anonymous");
+            //   img.onload = () => {
+            //     const canvas = document.createElement("canvas");
+            //     const w = img.width;
+            //     const h = img.height;
+            //     canvas.width = w;
+            //     canvas.height = h;
+            //     const context = canvas.getContext("2d");
+
+            //     // 绘制原始图像到 Canvas 上
+            //     context.drawImage(img, 0, 0, w, h);
+
+            //     const imageData = context.getImageData(0, 0, w, h);
+            //     const data = imageData.data;
+
+            //     // 定义青花瓷蓝色的 RGB 值
+            //     const blueR = 127;
+            //     const blueG = 195;
+            //     const blueB = 255;
+
+            //     // 遍历每个像素并修改颜色
+            //     for (let i = 0; i < data.length; i += 4) {
+            //       const red = data[i];
+            //       const green = data[i + 1];
+            //       const blue = data[i + 2];
+            //       const alpha = data[i + 3];
+
+            //       // 将所有颜色转换为青花瓷风格：主要是蓝白色调
+            //       const average = (red + green + blue) / 3;
+
+            //       // 将浅色部分转为白色
+            //       if (average > 100 && average <= 200) {
+            //         data[i] = 197; // Red
+            //         data[i + 1] = 236; // Green
+            //         data[i + 2] = 255; // Blue
+            //       } else if (average > 200) {
+            //         // 将深色部分转为青花瓷蓝色
+            //         data[i] = blueR; // Red
+            //         data[i + 1] = blueG; // Green
+            //         data[i + 2] = blueB; // Blue
+            //       } else {
+            //         // 将深色部分转为青花瓷蓝色
+            //         data[i] = blueR; // Red
+            //         data[i + 1] = blueG; // Green
+            //         data[i + 2] = blueB; // Blue
+            //       }
+            //     }
+
+            //     context.putImageData(imageData, 0, 0);
+            //     imageTile.getImage().src = canvas.toDataURL("image/png");
+            //   };
+            //   img.src = src;
+            // },
+          }),
         }),
       ],
       view: new View({
@@ -502,7 +557,7 @@ watch(
 
     //#region 监听地图类型变化，根据变化加载新的地图类型
     if (newMapObject) {
-      console.log('地图加载中');
+      console.log("地图加载中");
       loadMapByType(mapObject.value);
     }
     //#endregion

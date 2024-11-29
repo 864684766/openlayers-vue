@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BaseMap from "./components/OpenLayers/base.vue";
-// import TestMap from './components/OpenLayers/test.vue'
+import TestMap from './components/Cesium/base.vue'
 import { data } from "./mock/data.js";
 import { loadMapType, overlayType } from "@/enums";
 import shiziIcon from "@/assets/imgs/shizi.svg";

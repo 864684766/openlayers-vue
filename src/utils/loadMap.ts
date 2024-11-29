@@ -6,7 +6,7 @@ import { tianMapUrl } from "@/api/mapData";
 import { GeoJSON } from "ol/format";
 import { Stroke, Style } from "ol/style";
 import {
-  ICreateTianMapCva_w,
+  ICreateTianMapCva_w as ICreateTianMap,
   ILoadDefaultMap,
   ILoadTianStreetMap,
   ILoadTiaSatelliteMap,
@@ -15,11 +15,60 @@ import {
 //#region 具体加载某种类型地图的底图或者注记 的实现
 
 // 创建标注图层
-const createTianMapCva_w = ({ mapInstance }: ICreateTianMapCva_w) => {
+const createTianMap = ({ mapInstance, layerType }: ICreateTianMap) => {
   var source = new XYZ({
     // 使用天地图的注记图层 URL
-    url: tianMapUrl("cva"),
-    // 这里可以添加其他参数，例如图层类型
+    url: tianMapUrl(layerType),
+    tileLoadFunction: (imageTile: any, src) => {
+      const img = new Image();
+      img.setAttribute("crossOrigin", "anonymous");
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const w = img.width;
+        const h = img.height;
+        canvas.width = w;
+        canvas.height = h;
+        const context = canvas.getContext("2d");
+
+        // 绘制原始图像到 Canvas 上
+        context.drawImage(img, 0, 0, w, h);
+
+        const imageData = context.getImageData(0, 0, w, h);
+        const data = imageData.data;
+
+        // 定义青花瓷蓝色的 RGB 值
+        const blueR = 127;
+        const blueG = 195;
+        const blueB = 255;
+
+        // 遍历每个像素并修改颜色
+        for (let i = 0; i < data.length; i += 4) {
+          const red = data[i];
+          const green = data[i + 1];
+          const blue = data[i + 2];
+          const alpha = data[i + 3];
+
+          // 将所有颜色转换为青花瓷风格：主要是蓝白色调
+          const average = (red + green + blue) / 3;
+
+          // 将浅色部分转为白色
+          if (average > 200) {
+            data[i] = 255; // Red
+            data[i + 1] = 255; // Green
+            data[i + 2] = 255; // Blue
+          } else {
+            // 将深色部分转为青花瓷蓝色
+            data[i] = blueR; // Red
+            data[i + 1] = blueG; // Green
+            data[i + 2] = blueB; // Blue
+          }
+        }
+
+        context.putImageData(imageData, 0, 0);
+        imageTile.getImage().src = canvas.toDataURL("image/png");
+      };
+      img.src = src;
+    },
   });
 
   var layer = new TileLayer({
@@ -42,6 +91,12 @@ const loadDefaultMap = ({ mapInstance }: ILoadDefaultMap) => {
   mapInstance.addLayer(layer);
 };
 
+const tianMapLayerTypeMap = {
+  vec: "cva",
+  img: "cia",
+  ter: "cta",
+};
+
 /**
  * 加载天地图卫星地图
  * @param mapInstance
@@ -55,7 +110,7 @@ const loadTiaSatelliteMap = ({ mapInstance }: ILoadTiaSatelliteMap) => {
     className: "map-layer",
   });
   mapInstance.addLayer(layrt);
-  createTianMapCva_w({ mapInstance });
+  createTianMap({ mapInstance, layerType: tianMapLayerTypeMap.img });
 };
 
 /**
@@ -66,12 +121,67 @@ const loadTianStreetMap = ({ mapInstance }: ILoadTianStreetMap) => {
   const layrt = new TileLayer({
     source: new XYZ({
       url: tianMapUrl("vec"),
+      tileLoadFunction: (imageTile: any, src) => {
+        const img = new Image();
+        img.setAttribute("crossOrigin", "anonymous");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const w = img.width;
+          const h = img.height;
+          canvas.width = w;
+          canvas.height = h;
+          const context = canvas.getContext("2d");
+
+          // 绘制原始图像到 Canvas 上
+          context.drawImage(img, 0, 0, w, h);
+
+          const imageData = context.getImageData(0, 0, w, h);
+          const data = imageData.data;
+
+          // 定义青花瓷蓝色的 RGB 值
+          const blueR = 127;
+          const blueG = 195;
+          const blueB = 255;
+
+          // 遍历每个像素并修改颜色
+          for (let i = 0; i < data.length; i += 4) {
+            const red = data[i];
+            const green = data[i + 1];
+            const blue = data[i + 2];
+            const alpha = data[i + 3];
+
+            // 将所有颜色转换为青花瓷风格：主要是蓝白色调
+            const average = (red + green + blue) / 3;
+
+            // 将浅色部分转为白色
+            if (average > 100&&average<=200) {
+              data[i] = 197; // Red
+              data[i + 1] = 236; // Green
+              data[i + 2] = 255; // Blue
+            } else if (average > 200) {
+              // 将深色部分转为青花瓷蓝色
+              data[i] = blueR; // Red
+              data[i + 1] = blueG; // Green
+              data[i + 2] = blueB; // Blue
+            } else {
+              // 将深色部分转为青花瓷蓝色
+              data[i] = blueR; // Red
+              data[i + 1] = blueG; // Green
+              data[i + 2] = blueB; // Blue
+            }
+          }
+
+          context.putImageData(imageData, 0, 0);
+          imageTile.getImage().src = canvas.toDataURL("image/png");
+        };
+        img.src = src;
+      },
     }),
     visible: true, // 默认显示
     className: "map-layer",
   });
   mapInstance.addLayer(layrt);
-  createTianMapCva_w({ mapInstance });
+  createTianMap({ mapInstance, layerType: tianMapLayerTypeMap.vec });
 };
 
 /**
@@ -116,8 +226,8 @@ export const loadMapByType = (params: {
   geojsonData?: any;
 }) => {
   const { mapInstance, type, geojsonData } = params;
-  if(!mapInstance){
-    return
+  if (!mapInstance) {
+    return;
   }
   let loadMapFunction = mapObj[type];
   // 清除底图和覆盖物
@@ -126,7 +236,7 @@ export const loadMapByType = (params: {
     loadMapFunction({ mapInstance, geojsonData }); // 调用对应的加载函数
   } else {
     console.error(`未找到地图类型: ${type},启用默认的地图类型`);
-    loadMapFunction=mapObj[loadMapType.defaultMap];
-    loadMapFunction({ mapInstance}); // 调用对应的加载函数
+    loadMapFunction = mapObj[loadMapType.defaultMap];
+    loadMapFunction({ mapInstance }); // 调用对应的加载函数
   }
 };

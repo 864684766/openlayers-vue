@@ -71,6 +71,7 @@ export class ICreateMap{
 };
 
 export class ICreateTianMapCva_w extends ICreateMap {
+  layerType: string;
 }
 
 export class ILoadDefaultMap extends ICreateMap {
