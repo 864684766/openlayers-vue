@@ -48,3 +48,43 @@ export enum loadMapType {
    */
   geoJsonMap="geoJsonMap"
 }
+
+/**
+ * 默认的地图主题
+ */
+export enum defaulMapTheme {
+  /**
+   * 绿野仙踪
+   */
+  theWizardOfOz = "theWizardOfOz",
+
+  /**
+   * 青花瓷
+   */
+  blueAndWhitePorcelain = "blueAndWhitePorcelain",
+
+  /**
+   * 曜夜
+   */
+  midnight = "midnight",
+
+  /**
+   * 茶园
+  */
+  teaGarden = "teaGarden",
+
+  /**
+   * 中秋
+   */
+  halloween = "halloween",
+
+  /**
+   * 眼眸
+   */
+  eye = "eye",
+
+  /**
+   * OKR
+   */
+  OKR = "OKR",
+}

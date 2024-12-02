@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from "vue";
 import { Map, View } from "ol";
-import { OSM, Vector as VectorSource } from "ol/source";
+import source,{ OSM, Vector as VectorSource } from "ol/source";
 import {
   defaults as defaultControls,
   Control,
@@ -25,7 +25,8 @@ import {
   IMarkPoint,
   IOverlayPool,
 } from "@/type";
-import { loadMapByType } from "@/utils/loadMap";
+import { loadMapByType, setRbg, tileLoadFunction } from "@/utils/loadMap";
+import { defaultMapStyle } from "@/utils/maptype";
 
 const props = defineProps({
   /**
@@ -88,6 +89,13 @@ const props = defineProps({
     type: Object,
     required: false,
   },
+  /**
+   * 地图主题
+   */
+  defaultMaptheme: {
+    type: String,
+    default: true,
+  },
 });
 
 /**
@@ -104,6 +112,11 @@ let mapInstance = null;
  * 动画帧ID
  */
 let animalFrameId = null;
+
+/**
+ * 地图的基础图层类型
+ */
+const baseMap=[OSM,source.XYZ]
 
 const mapObject = computed(() => {
   return {
@@ -461,63 +474,7 @@ const initMap = () => {
       ]),
       layers: [
         new TileLayer({
-          source: new OSM({
-            // tileLoadFunction: (imageTile: any, src) => {
-            //   const img = new Image();
-            //   img.setAttribute("crossOrigin", "anonymous");
-            //   img.onload = () => {
-            //     const canvas = document.createElement("canvas");
-            //     const w = img.width;
-            //     const h = img.height;
-            //     canvas.width = w;
-            //     canvas.height = h;
-            //     const context = canvas.getContext("2d");
-
-            //     // 绘制原始图像到 Canvas 上
-            //     context.drawImage(img, 0, 0, w, h);
-
-            //     const imageData = context.getImageData(0, 0, w, h);
-            //     const data = imageData.data;
-
-            //     // 定义青花瓷蓝色的 RGB 值
-            //     const blueR = 127;
-            //     const blueG = 195;
-            //     const blueB = 255;
-
-            //     // 遍历每个像素并修改颜色
-            //     for (let i = 0; i < data.length; i += 4) {
-            //       const red = data[i];
-            //       const green = data[i + 1];
-            //       const blue = data[i + 2];
-            //       const alpha = data[i + 3];
-
-            //       // 将所有颜色转换为青花瓷风格：主要是蓝白色调
-            //       const average = (red + green + blue) / 3;
-
-            //       // 将浅色部分转为白色
-            //       if (average > 100 && average <= 200) {
-            //         data[i] = 197; // Red
-            //         data[i + 1] = 236; // Green
-            //         data[i + 2] = 255; // Blue
-            //       } else if (average > 200) {
-            //         // 将深色部分转为青花瓷蓝色
-            //         data[i] = blueR; // Red
-            //         data[i + 1] = blueG; // Green
-            //         data[i + 2] = blueB; // Blue
-            //       } else {
-            //         // 将深色部分转为青花瓷蓝色
-            //         data[i] = blueR; // Red
-            //         data[i + 1] = blueG; // Green
-            //         data[i + 2] = blueB; // Blue
-            //       }
-            //     }
-
-            //     context.putImageData(imageData, 0, 0);
-            //     imageTile.getImage().src = canvas.toDataURL("image/png");
-            //   };
-            //   img.src = src;
-            // },
-          }),
+          source: new OSM(),
         }),
       ],
       view: new View({
@@ -547,8 +504,8 @@ onMounted(() => {
  * 监听外部数据变化,根据变化执行副作用
  */
 watch(
-  () => [props.mapCenter, mapObject.value],
-  ([newMapCenter, newMapObject]) => {
+  () => [props.mapCenter, mapObject.value,props.defaultMaptheme],
+  ([newMapCenter, newMapObject,newDefaultMaptheme]) => {
     //#region 监听地图中心点变化
     if (newMapCenter) {
       mapInstance?.getView().setCenter(newMapCenter);
@@ -561,6 +518,10 @@ watch(
       loadMapByType(mapObject.value);
     }
     //#endregion
+
+    if(newDefaultMaptheme){
+      setRbg(defaultMapStyle[props.defaultMaptheme])
+    }
   }
 );
 
