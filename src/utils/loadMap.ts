@@ -25,7 +25,12 @@ const rgb = {
   b: 255,
 };
 
-export const setRbg = (theme: string, imageTile: any, source: any) => {
+/**
+ * 根据主题key设置地图主题
+ * @param theme 主题的key
+ * @param source 图层源
+ */
+export const setMapTheme = (theme: string, source: any) => {
   // 获取滤镜参数
   const filter = defaultMapFilter[theme].filter;
 

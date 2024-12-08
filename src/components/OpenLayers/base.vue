@@ -25,7 +25,7 @@ import {
   IMarkPoint,
   IOverlayPool,
 } from "@/type";
-import { loadMapByType, setRbg } from "@/utils/loadMap";
+import { loadMapByType, setMapTheme } from "@/utils/loadMap";
 
 const props = defineProps({
   /**
@@ -527,7 +527,7 @@ watch(
         ); // 获取当前图层
       const source = imageTile.getSource()
 
-      setRbg(props.defaultMaptheme, imageTile, source); // 调用 setRbg 方法
+      setMapTheme(props.defaultMaptheme, source); // 调用 setRbg 方法
     }
   }
 );
