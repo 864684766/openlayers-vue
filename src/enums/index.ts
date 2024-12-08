@@ -87,4 +87,9 @@ export enum defaulMapTheme {
    * OKR
    */
   OKR = "OKR",
+
+  /**
+   * 默认
+   */
+  default="default"
 }

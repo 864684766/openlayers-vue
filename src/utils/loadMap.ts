@@ -11,6 +11,7 @@ import {
   ILoadTianStreetMap,
   ILoadTiaSatelliteMap,
 } from "@/type";
+import { defaultMapFilter } from "./maptype";
 
 //#region 具体加载某种类型地图的底图或者注记 的实现
 
@@ -21,73 +22,41 @@ import {
 const rgb = {
   r: 255,
   g: 255,
-  b: 255
-}
+  b: 255,
+};
 
-export const setRbg = (rgb:any)=>{
-  rgb=rgb
+export const setRbg = (theme: string, imageTile: any, source: any) => {
+  // 获取滤镜参数
+  const filter = defaultMapFilter[theme].filter;
 
-  
-}
+  // 调用 tileLoadFunction 重新渲染瓦片颜色
+  source.setTileLoadFunction((imageTile: any, src) => {
+    const img = new Image();
+    img.setAttribute("crossOrigin", "anonymous");
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const w = img.width;
+      const h = img.height;
+      canvas.width = w;
+      canvas.height = h;
+      const context = canvas.getContext("2d");
 
-export const tileLoadFunction=(imageTile: any, src) => {
-  const img = new Image();
-  img.setAttribute("crossOrigin", "anonymous");
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    const w = img.width;
-    const h = img.height;
-    canvas.width = w;
-    canvas.height = h;
-    const context = canvas.getContext("2d");
+      // 应用 filter 属性
+      context.filter = filter;
 
-    // 绘制原始图像到 Canvas 上
-    context.drawImage(img, 0, 0, w, h);
+      // 绘制原始图像到 Canvas 上
+      context.drawImage(img, 0, 0, w, h);
 
-    const imageData = context.getImageData(0, 0, w, h);
-    const data = imageData.data;
-
-    // 定义青花瓷蓝色的 RGB 值
-    const R = rgb.r;
-    const G = rgb.g;
-    const B = rgb.b;
-
-    // 遍历每个像素并修改颜色
-    for (let i = 0; i < data.length; i += 4) {
-      const red = data[i];
-      const green = data[i + 1];
-      const blue = data[i + 2];
-
-      // 将所有颜色转换为青花瓷风格：主要是蓝白色调
-      const average = (red + green + blue) / 3;
-
-      // 数值越小越浅
-      if (average > 100&&average<=200) {
-        data[i] = 197; // Red
-        data[i + 1] = 236; // Green
-        data[i + 2] = 255; // Blue
-      } else if (average > 200) {
-        data[i] = R; // Red
-        data[i + 1] = G; // Green
-        data[i + 2] = B; // Blue
-      } else {
-        data[i] = R; // Red
-        data[i + 1] = G; // Green
-        data[i + 2] = B; // Blue
-      }
-    }
-    context.putImageData(imageData, 0, 0);
-    imageTile.getImage().src = canvas.toDataURL("image/png");
-  };
-  img.src = src;
-}
-
-
+      imageTile.getImage().src = canvas.toDataURL("image/png");
+    };
+    img.src = src;
+  });
+};
 // 创建标注图层
 const createTianMap = ({ mapInstance, layerType }: ICreateTianMap) => {
   var source = new XYZ({
     // 使用天地图的注记图层 URL
-    url: tianMapUrl(layerType)
+    url: tianMapUrl(layerType),
   });
 
   var layer = new TileLayer({
@@ -139,7 +108,7 @@ const loadTiaSatelliteMap = ({ mapInstance }: ILoadTiaSatelliteMap) => {
 const loadTianStreetMap = ({ mapInstance }: ILoadTianStreetMap) => {
   const layrt = new TileLayer({
     source: new XYZ({
-      url: tianMapUrl("vec")
+      url: tianMapUrl("vec"),
     }),
     visible: true, // 默认显示
     className: "map-base-layer",

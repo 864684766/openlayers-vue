@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from "vue";
 import { Map, View } from "ol";
-import source,{ OSM, Vector as VectorSource } from "ol/source";
+import { OSM, Vector as VectorSource, XYZ } from "ol/source";
 import {
   defaults as defaultControls,
   Control,
@@ -25,8 +25,7 @@ import {
   IMarkPoint,
   IOverlayPool,
 } from "@/type";
-import { loadMapByType, setRbg, tileLoadFunction } from "@/utils/loadMap";
-import { defaultMapStyle } from "@/utils/maptype";
+import { loadMapByType, setRbg } from "@/utils/loadMap";
 
 const props = defineProps({
   /**
@@ -113,10 +112,8 @@ let mapInstance = null;
  */
 let animalFrameId = null;
 
-/**
- * 地图的基础图层类型
- */
-const baseMap=[OSM,source.XYZ]
+// 定义支持的源类型，根据这些类型对瓦片进行渲染
+const supportedSources = [OSM, XYZ];
 
 const mapObject = computed(() => {
   return {
@@ -504,8 +501,8 @@ onMounted(() => {
  * 监听外部数据变化,根据变化执行副作用
  */
 watch(
-  () => [props.mapCenter, mapObject.value,props.defaultMaptheme],
-  ([newMapCenter, newMapObject,newDefaultMaptheme]) => {
+  () => [props.mapCenter, mapObject.value, props.defaultMaptheme],
+  ([newMapCenter, newMapObject, newDefaultMaptheme]) => {
     //#region 监听地图中心点变化
     if (newMapCenter) {
       mapInstance?.getView().setCenter(newMapCenter);
@@ -519,8 +516,18 @@ watch(
     }
     //#endregion
 
-    if(newDefaultMaptheme){
-      setRbg(defaultMapStyle[props.defaultMaptheme])
+    if (newDefaultMaptheme) {
+      const imageTile = mapInstance
+        .getLayers()
+        .getArray()
+        .find((layer) =>
+          supportedSources.some(
+            (sourceType) => layer.getSource() instanceof sourceType
+          )
+        ); // 获取当前图层
+      const source = imageTile.getSource()
+
+      setRbg(props.defaultMaptheme, imageTile, source); // 调用 setRbg 方法
     }
   }
 );

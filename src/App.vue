@@ -2,7 +2,7 @@
 import BaseMap from "./components/OpenLayers/base.vue";
 import TestMap from './components/Cesium/base.vue'
 import { data } from "./mock/data.js";
-import { loadMapType, overlayType } from "@/enums";
+import { defaulMapTheme, loadMapType, overlayType } from "@/enums";
 import shiziIcon from "@/assets/imgs/shizi.svg";
 import daxiangIcon from "@/assets/imgs/daxiang.svg";
 import { ref } from "vue";
@@ -48,10 +48,26 @@ const mapType = ref([
   { label: "geojson矢量", value: loadMapType.geoJsonMap },
 ]);
 
+const mapThemes = ref([
+  { label: "绿野仙踪", value: defaulMapTheme.theWizardOfOz },
+  { label: "青花瓷", value: defaulMapTheme.blueAndWhitePorcelain },
+  { label: "曜夜", value: defaulMapTheme.midnight },
+  { label: "茶园", value: defaulMapTheme.teaGarden },
+  { label: "中秋", value: defaulMapTheme.halloween },
+  { label: "眼眸", value: defaulMapTheme.eye },
+  // { label: "OKR", value: defaulMapTheme.OKR }, //暂时没想好也没设计好这个滤镜
+  { label: "默认", value: defaulMapTheme.default},
+]);
+
 const selOverLayType = ref("");
 
 const selMapType = ref("");
 
+const selMapTheme = ref("");
+
+/**
+ * 地图中心点
+ */
 const mapCenter = ref([119.985883, 30.280393]);
 
 const addMarker = () => {
@@ -109,6 +125,7 @@ const removeMarkersByType = () => {
     :mark-return-delay="0"
     :map-center="mapCenter"
     :load-map-type="selMapType"
+    :default-maptheme="selMapTheme"
     :geojson-data="mapData"
     ref="baseMapRef"
   />
@@ -152,6 +169,13 @@ const removeMarkersByType = () => {
     <span class="mr-2 ">加载指定的地图类型:</span>
     <select v-model="selMapType" placeholder="选择一个地图类型" class="mr-2 p-2 rounded-sm">
       <option v-for="item in mapType" :value="item.value">
+        {{ item.label }}
+      </option>
+    </select>
+
+    <span class="mr-2 ">选择地图主题:</span>
+    <select v-model="selMapTheme" placeholder="选择一个地图类型" class="mr-2 p-2 rounded-sm">
+      <option v-for="item in mapThemes" :value="item.value">
         {{ item.label }}
       </option>
     </select>
